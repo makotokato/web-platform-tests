@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import stat
+import string
 import subprocess
 import sys
 import tarfile
@@ -24,6 +25,10 @@ TbplFormatter = None
 reader = None
 wptcommandline = None
 wptrunner = None
+
+
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 
 logger = logging.getLogger(os.path.splitext(__file__)[0])
@@ -402,6 +407,14 @@ def process_results(log, iterations):
     return results, inconsistent
 
 
+def markdown_adjust(s):
+    s = s.replace('\t', u'\u2409')
+    s = s.replace('\n', u'\u240a')
+    s = s.replace('\r', u'\u240d')
+    s = s.replace('`',  u'\u2035')
+    return s
+
+
 def table(headings, data, log):
     cols = range(len(headings))
     assert all(len(item) == len(cols) for item in data)
@@ -420,7 +433,7 @@ def table(headings, data, log):
 
 def write_inconsistent(inconsistent, iterations):
     logger.error("## Unstable results ##\n")
-    strings = [(test, subtest if subtest else "", err_string(results, iterations))
+    strings = [("`%s`" % markdown_adjust(test), ("`%s`" % markdown_adjust(subtest)) if subtest else "", err_string(results, iterations))
                 for test, subtest, results in inconsistent]
     table(["Test", "Subtest", "Results"], strings, logger.error)
 
@@ -443,7 +456,7 @@ def write_results(results, iterations, comment_pr):
             logger.info("### %s ###" % test)
         parent = test_results.pop(None)
         strings = [("", err_string(parent, iterations))]
-        strings.extend(((subtest if subtest else "", err_string(results, iterations))
+        strings.extend(((("`%s`" % markdown_adjust(subtest)) if subtest else "", err_string(results, iterations))
                         for subtest, results in test_results.iteritems()))
         table(["Subtest", "Results"], strings, logger.info)
 
